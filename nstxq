@@ -1,0 +1,14 @@
+#!/bin/bash
+
+dst="169.254.254.1"
+
+for cpu in 0 1; do
+  {
+    sudo timeout -s INT 4 netsniff-ng --fanout-group 42 --fanout-type qm --filter "dst $dst" -i tap0 -lq 2>&1 | sed 's/^/qm0:  /' &
+    sleep 1
+    sudo timeout -s INT 3 netsniff-ng --fanout-group 42 --fanout-type qm --filter "dst $dst" -i tap0 -lq 2>&1 | sed 's/^/qm1:  /' &
+    sleep 1
+    taskset -c "$cpu" ping -c1 "$dst" | sed 's/^/ping: /'
+    wait
+  } 2>&1 | grep 'icmp\|Type' | sed "s/^/cpu$cpu: /"
+done
